@@ -207,11 +207,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "/home/dzeta/repo/neo-sc/neo-sc.csproj",
+      "projectUniqueName": "/home/dzeta/repo/Casper-NEO/neo-sc.csproj",
       "projectName": "neo-sc",
-      "projectPath": "/home/dzeta/repo/neo-sc/neo-sc.csproj",
+      "projectPath": "/home/dzeta/repo/Casper-NEO/neo-sc.csproj",
       "packagesPath": "/home/dzeta/.nuget/packages/",
-      "outputPath": "/home/dzeta/repo/neo-sc/obj/",
+      "outputPath": "/home/dzeta/repo/Casper-NEO/obj/",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "/usr/share/dotnet/sdk/NuGetFallbackFolder"

@@ -6,3 +6,11 @@
 /home/dzeta/repo/neo-sc/obj/Debug/netstandard2.0/neo-sc.AssemblyInfo.cs
 /home/dzeta/repo/neo-sc/obj/Debug/netstandard2.0/neo-sc.dll
 /home/dzeta/repo/neo-sc/obj/Debug/netstandard2.0/neo-sc.pdb
+/home/dzeta/repo/Casper-NEO/bin/Debug/netstandard2.0/neo-sc.deps.json
+/home/dzeta/repo/Casper-NEO/bin/Debug/netstandard2.0/neo-sc.dll
+/home/dzeta/repo/Casper-NEO/bin/Debug/netstandard2.0/neo-sc.pdb
+/home/dzeta/repo/Casper-NEO/obj/Debug/netstandard2.0/neo-sc.csproj.CoreCompileInputs.cache
+/home/dzeta/repo/Casper-NEO/obj/Debug/netstandard2.0/neo-sc.AssemblyInfoInputs.cache
+/home/dzeta/repo/Casper-NEO/obj/Debug/netstandard2.0/neo-sc.AssemblyInfo.cs
+/home/dzeta/repo/Casper-NEO/obj/Debug/netstandard2.0/neo-sc.dll
+/home/dzeta/repo/Casper-NEO/obj/Debug/netstandard2.0/neo-sc.pdb

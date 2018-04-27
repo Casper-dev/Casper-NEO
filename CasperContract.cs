@@ -7,6 +7,41 @@ using System.IO;
 
 public class CasperContract: SmartContract
 {
+    // Order in which fields are specified is used
+    // in serialization/deserialization procedures.
+    // If you change anything here, change them accordingly.
+    private struct Node
+    {
+        public BigInteger size, free, index, fping;
+        public byte[] ipPort, thrift, telegram, role, owner;
+    }
+
+    private static byte[] NSerialize(Node n)
+    {
+        var a = new object[]{
+            n.size, n.free, n.index, n.fping,
+            n.ipPort, n.thrift, n.telegram, n.role, n.owner,
+        };
+        return a.Serialize();
+    }
+
+    private static Node NDeserialize(byte[] b)
+    {
+        var a = (object[])b.Deserialize();
+        Node n = new Node();
+        n.size = (BigInteger)a[0];
+        n.free = (BigInteger)a[1];
+        n.index = (BigInteger)a[2];
+        n.fping = (BigInteger)a[3];
+        n.ipPort = (byte[])a[4];
+        n.thrift = (byte[])a[5];
+        n.telegram = (byte[])a[6];
+        n.role = (byte[])a[7];
+        n.owner = (byte[])a[8];
+
+        return n;
+    }
+
     //enum Role : byte {Normal=1, Banned};
     public const byte RoleNormal = 0x01;
     public const byte RoleBanned = 0x02;
@@ -16,15 +51,7 @@ public class CasperContract: SmartContract
     public const ulong bytesPerToken = 128;
 
     // at nodeID + *Sx we store provider parameters
-    public const string sizeSx     = ":size";
-    public const string freeSx     = ":free";
-    public const string ipPortSx   = ":ipport";
-    public const string thriftSx   = ":thrift";
-    public const string telegramSx = ":telegram";
-    public const string roleSx     = ":role";
-    public const string fpingSx    = ":fping";
-    public const string indexSx    = ":index";
-    public const string ownerSx    = ":owner";
+    public const string sizeSx = ":size";
 
     // at NodeS we store counter with #number of nodes + 1
     // at NodeS + "i", i = 1.. we store node hashes
@@ -74,34 +101,40 @@ public class CasperContract: SmartContract
         byte[] role     = new byte[]{RoleNormal};
         Runtime.Notify("exec: registerprovider", nodeID, size, ipPort, thrift, role);
 
-        //Map<string, string> nodeMap = new Map<string, string>();
-        //nodeMap[nodeID] = "kek";
-        //Runtime.Notify("stored:", nodeMap[nodeID]);
-
         // TODO check balance
-
-        byte[] v = Storage.Get(Storage.CurrentContext, nodeID + sizeSx);
-        if (v != null)
+        var node = Storage.Get(Storage.CurrentContext, nodeID);
+        if (node != null)
             Fatal("provider already registered");
 
         //var node = (NodeHash: nodeID, Telegram: telegram, UDPIpPort: udpIpPort, IPPort: ipPort, Size: size);
         BigInteger count;
-        v = Storage.Get(Storage.CurrentContext, nodeS);
+        var v = Storage.Get(Storage.CurrentContext, nodeS);
         count = (v == null) ? 1 : v.AsBigInteger();
         Runtime.Notify("count:", count);
         Storage.Put(Storage.CurrentContext, nodeS + count, nodeID);
 
         BigInteger zero = 0;
         byte[] free = size.AsByteArray();
-        Storage.Put(Storage.CurrentContext, nodeID + sizeSx, free);
-        Storage.Put(Storage.CurrentContext, nodeID + freeSx, free);
-        Storage.Put(Storage.CurrentContext, nodeID + ipPortSx, ipPort);
-        Storage.Put(Storage.CurrentContext, nodeID + thriftSx, thrift);
-        Storage.Put(Storage.CurrentContext, nodeID + telegramSx, telegram);
-        Storage.Put(Storage.CurrentContext, nodeID + roleSx, role);
-        Storage.Put(Storage.CurrentContext, nodeID + fpingSx, zero.AsByteArray());
-        Storage.Put(Storage.CurrentContext, nodeID + indexSx, count.AsByteArray());
-        Storage.Put(Storage.CurrentContext, nodeID + ownerSx, ExecutionEngine.CallingScriptHash);
+
+        Map<string, string> nodeMap = new Map<string, string>();
+        nodeMap["1"] = "123";
+        Runtime.Notify("stored:", nodeMap["1"]);
+        //Runtime.Notify(nodeMap.Serialize());
+
+        Node n = new Node();
+        n.size     = size;
+        n.free     = size;
+        n.ipPort   = ipPort;
+        n.thrift   = thrift;
+        n.telegram = telegram;
+        n.role     = role;
+        n.index    = count;
+        n.fping    = zero;
+        n.owner    = ExecutionEngine.CallingScriptHash;
+
+        Runtime.Notify(NSerialize(n));
+
+        Storage.Put(Storage.CurrentContext, nodeID, NSerialize(n));
 
         count = count + 1;
         Storage.Put(Storage.CurrentContext, nodeS, count.AsByteArray());
@@ -113,28 +146,30 @@ public class CasperContract: SmartContract
     {
         var nodeID = (string)args[0];
         Runtime.Notify("exec: getnodeinfo", nodeID);
-        byte[] sz = Storage.Get(Storage.CurrentContext, nodeID + sizeSx);
-        if (sz == null)
+        byte[] node = Storage.Get(Storage.CurrentContext, nodeID);
+        if (node == null)
             Fatal("absent value");
 
-        byte[] free   = Storage.Get(Storage.CurrentContext, nodeID + freeSx);
-        byte[] ipPort = Storage.Get(Storage.CurrentContext, nodeID + ipPortSx);
-        byte[] thrift = Storage.Get(Storage.CurrentContext, nodeID + thriftSx);
-        byte[] role   = Storage.Get(Storage.CurrentContext, nodeID + roleSx);
+        Node n = NDeserialize(node);
 
-        return new object[]{sz, free, ipPort, thrift, role[0]};
+        return new object[]{n.size, n.free, n.ipPort, n.thrift, n.role[0]};
     }
 
     public static object[] UpdateIpPort(object[] args)
     {
-        var nodeID = (string)args[0];
-        var ipPort = (string)args[1];
+        var nodeID = (byte[])args[0];
+        var ipPort = (byte[])args[1];
 
-        var owner = Storage.Get(Storage.CurrentContext, nodeID + ownerSx);
-        if (!slicesEqual(owner, ExecutionEngine.CallingScriptHash))
+        var node = Storage.Get(Storage.CurrentContext, nodeID);
+        if (node == null)
+            Fatal("absent value");
+
+        Node n = NDeserialize(node);
+        if (!slicesEqual(n.owner, ExecutionEngine.CallingScriptHash))
             Fatal("wrong address");
 
-        Storage.Put(Storage.CurrentContext, nodeID + ipPortSx, ipPort);
+        n.ipPort = ipPort;
+        Storage.Put(Storage.CurrentContext, nodeID, NSerialize(n));
 
         return new object[]{ipPort};
     }
@@ -145,28 +180,34 @@ public class CasperContract: SmartContract
         var fileID      = (string)args[1];
         BigInteger size = (long)  args[2];
 
-        byte[] freeVal = Storage.Get(Storage.CurrentContext, nodeID + freeSx);
-        BigInteger free = freeVal.AsBigInteger();
-        if (free < size)
+        var node = Storage.Get(Storage.CurrentContext, nodeID);
+        if (node == null)
+            Fatal("absent value");
+
+        Node n = NDeserialize(node);
+        if (n.free < size)
             Fatal("insufficient space");
 
-        free = free - size;
-        Storage.Put(Storage.CurrentContext, nodeID + freeSx, free.AsByteArray());
+        n.free = n.free - size;
+        Storage.Put(Storage.CurrentContext, nodeID, NSerialize(n));
 
         string fp = fileS + fileID;
         Storage.Put(Storage.CurrentContext, fp + sizeSx, size.AsByteArray());
 
-        return new object[]{free};
+        return new object[]{n.free};
     }
 
     public static object[] ConfirmUpdate(object[] args)
     {
-        var nodeID      = (string)args[0];
-        var fileID      = (string)args[1];
+        var nodeID      = (byte[])args[0];
+        var fileID      = (byte[])args[1];
         BigInteger size = (long)args[2];
 
-        byte[] freeVal = Storage.Get(Storage.CurrentContext, nodeID + freeSx);
-        BigInteger free = freeVal.AsBigInteger();
+        var node = Storage.Get(Storage.CurrentContext, nodeID);
+        if (node == null)
+          Fatal("absent value");
+
+        Node n = NDeserialize(node);
 
         string fp = fileS + fileID;
         byte[] curVal = Storage.Get(Storage.CurrentContext, fp + sizeSx);
@@ -174,14 +215,14 @@ public class CasperContract: SmartContract
             Fatal("no file with such id");
 
         BigInteger csize = curVal.AsBigInteger();
-        if (free + csize < size)
+        if (n.free + csize < size)
             Fatal("insufficient space");
 
-        free = free + csize - size;
-        Storage.Put(Storage.CurrentContext, nodeID + freeSx, free.AsByteArray());
+        n.free = n.free + csize - size;
+        Storage.Put(Storage.CurrentContext, nodeID, NSerialize(n));
         Storage.Put(Storage.CurrentContext, fp + sizeSx, size.AsByteArray());
 
-        return new object[]{free};
+        return new object[]{n.free};
     }
 
     // TODO get random peers
@@ -200,8 +241,9 @@ public class CasperContract: SmartContract
         for(long i = 1; i < count; i++)
         {
             byte[] nodeID = Storage.Get(Storage.CurrentContext, nodeS + i);
-            byte[] free = Storage.Get(Storage.CurrentContext, nodeID + freeSx);
-            if (size < free.AsBigInteger())
+            var node = Storage.Get(Storage.CurrentContext, nodeID);
+            Node n = NDeserialize(node);
+            if (size < n.free)
             {
                 ips[ind] = nodeID;
                 ind = ind + 1;
@@ -240,15 +282,18 @@ public class CasperContract: SmartContract
             return new object[]{false};
 
         // 1. increase number of failed pings
-        var v = Storage.Get(Storage.CurrentContext, nodeID + fpingSx);
-        var fp = v.AsBigInteger();
-        fp = fp + 1;
+        var node = Storage.Get(Storage.CurrentContext, nodeID);
+        if (node == null)
+            Fatal("absent value");
+        Node n = NDeserialize(node);
+        n.fping = n.fping + 1;
 
         // 2. ban node if failedPings > 5
         // 3. return true if node is banned
-        if (fp > MaxFailedPings)
+        if (n.fping > MaxFailedPings)
         {
-            Storage.Put(Storage.CurrentContext, nodeID + roleSx, RoleBanned);
+            n.role = new byte[]{RoleBanned};
+            Storage.Put(Storage.CurrentContext, nodeID, NSerialize(n));
             return new object[]{true};
         }
 
@@ -262,14 +307,14 @@ public class CasperContract: SmartContract
         var fileID      = (string)args[1];
         BigInteger size = (long)args[2];
 
-        var fv = Storage.Get(Storage.CurrentContext, nodeID + freeSx);
-        if (fv == null)
-            Fatal("no free space");
+        var node = Storage.Get(Storage.CurrentContext, nodeID);
+        if (node == null)
+            Fatal("absent value");
+        Node n = NDeserialize(node);
 
-        BigInteger free = fv.AsBigInteger();
         // TODO take size from Storage by fileID?
-        free = free + size;
-        Storage.Put(Storage.CurrentContext, nodeID + freeSx, free.AsByteArray());
+        n.free = n.free + size;
+        Storage.Put(Storage.CurrentContext, nodeID, NSerialize(n));
     }
 
     public static void NotifyVerificationTarget(object[] args)
@@ -298,8 +343,9 @@ public class CasperContract: SmartContract
         for (long i = 1; i < count; i++)
         {
             byte[] nodeID = Storage.Get(Storage.CurrentContext, nodeS + i);
-            byte[] size = Storage.Get(Storage.CurrentContext, nodeID + sizeSx);
-            Runtime.Notify("node:", nodeID, size);
+            var node = Storage.Get(Storage.CurrentContext, nodeID);
+            Node n = NDeserialize(node);
+            Runtime.Notify("node:", nodeID, n.size);
         }
     }
 
