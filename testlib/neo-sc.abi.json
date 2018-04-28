@@ -1,5 +1,5 @@
 {
-    "hash":"0x07c4858dc0f3e5a1878f776f2aafc5f29d747b6e",
+    "hash":"0xdc7e6a0e779a86f66f7f3b3088b1c76e285835cd",
     "entrypoint":"Main",
     "functions":
     [
@@ -97,6 +97,17 @@
         },
         {
             "name":"SendPingResult",
+            "parameters":
+            [
+                {
+                    "name":"args",
+                    "type":"Array"
+                }
+            ],
+            "returntype":"Array"
+        },
+        {
+            "name":"GetFileSize",
             "parameters":
             [
                 {

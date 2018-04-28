@@ -73,6 +73,8 @@ public class CasperContract: SmartContract
             return GetPeers(args);
         else if (op == "getpingtarget")
             return GetPingTarget(args);
+        else if (op == "getfilesize")
+            return GetFileSize(args);
         else if (op == "setipport")
             return UpdateIpPort(args);
         else if (op == "confirmupload")
@@ -88,7 +90,7 @@ public class CasperContract: SmartContract
         else
             Fatal("unknown operation");
 
-        return new object[]{};
+        return new object[]{"ok"};
     }
 
     public static object[] RegisterProvider(object[] args)
@@ -113,14 +115,6 @@ public class CasperContract: SmartContract
         Runtime.Notify("count:", count);
         Storage.Put(Storage.CurrentContext, nodeS + count, nodeID);
 
-        BigInteger zero = 0;
-        byte[] free = size.AsByteArray();
-
-        Map<string, string> nodeMap = new Map<string, string>();
-        nodeMap["1"] = "123";
-        Runtime.Notify("stored:", nodeMap["1"]);
-        //Runtime.Notify(nodeMap.Serialize());
-
         Node n = new Node();
         n.size     = size;
         n.free     = size;
@@ -129,10 +123,8 @@ public class CasperContract: SmartContract
         n.telegram = telegram;
         n.role     = role;
         n.index    = count;
-        n.fping    = zero;
+        n.fping    = 0;
         n.owner    = ExecutionEngine.CallingScriptHash;
-
-        Runtime.Notify(NSerialize(n));
 
         Storage.Put(Storage.CurrentContext, nodeID, NSerialize(n));
 
@@ -190,9 +182,7 @@ public class CasperContract: SmartContract
 
         n.free = n.free - size;
         Storage.Put(Storage.CurrentContext, nodeID, NSerialize(n));
-
-        string fp = fileS + fileID;
-        Storage.Put(Storage.CurrentContext, fp + sizeSx, size.AsByteArray());
+        Storage.Put(Storage.CurrentContext, fileS + fileID, size.AsByteArray());
 
         return new object[]{n.free};
     }
@@ -209,8 +199,7 @@ public class CasperContract: SmartContract
 
         Node n = NDeserialize(node);
 
-        string fp = fileS + fileID;
-        byte[] curVal = Storage.Get(Storage.CurrentContext, fp + sizeSx);
+        byte[] curVal = Storage.Get(Storage.CurrentContext, fileS + fileID);
         if (curVal == null)
             Fatal("no file with such id");
 
@@ -220,7 +209,7 @@ public class CasperContract: SmartContract
 
         n.free = n.free + csize - size;
         Storage.Put(Storage.CurrentContext, nodeID, NSerialize(n));
-        Storage.Put(Storage.CurrentContext, fp + sizeSx, size.AsByteArray());
+        Storage.Put(Storage.CurrentContext, fileS + fileID, size.AsByteArray());
 
         return new object[]{n.free};
     }
@@ -298,6 +287,17 @@ public class CasperContract: SmartContract
         }
 
         return new object[]{false};
+    }
+
+    public static object[] GetFileSize(object[] args)
+    {
+        var fileID = (string)args[0];
+        var val = Storage.Get(Storage.CurrentContext, fileS + fileID);
+        if (val == null)
+            Fatal("no file with such id");
+
+        BigInteger size = val.AsBigInteger();
+        return new object[]{size};
     }
 
     // FIXME NotifySpaceFreed in solidity

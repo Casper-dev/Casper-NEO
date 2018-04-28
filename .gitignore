@@ -1,2 +1,4 @@
 testlib/neo-sc.avm
+testlib/neo-sc.dll
 bin/
+obj/
