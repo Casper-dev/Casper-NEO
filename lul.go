@@ -29,131 +29,99 @@ const (
 )
 
 func main() {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Printf("error: %v", r)
+		}
+	}()
+
 	wif, err := wallet.WIFDecode(wifKey, wallet.WIFVersion)
 	if err != nil {
-		fmt.Println(err)
-		return
+		panic(err)
 	}
-
-	//tran := &transaction.Transaction{}
-	//tstr, err := hex.DecodeString(
-	//	"d1013101140566696c6531036c756c53c10d636f6e6669726d75706c6f616467cd3558286ec7b188303b7f6ff6869a770e6a7edc0000000000000000012023ba2703c53263e8d6e522dc32203339dcd8eee901e58b25af169798844e8ea148960994d9a1c71a7b8f27ae24638eb254707f11a5000001e72d286979ee6cb1b7e65dfddfb2e384100b8d148e7758de42e4168b71792c60c081f319a600000023ba2703c53263e8d6e522dc32203339dcd8eee9014140c6de83f81e815fa492fa8359d6be9c56829af9b2536149493d202c46684bf40f2a820c53e651723d7493451d8021de61a199ebf2b00c193a62dba5800a19adb12321031a6c6fbbdf02ca351745fa86b9ba5a9452d785ac4f7fc2b7548ca2a46c4fcf4aac",
-	//)
-	//err = tran.DecodeBinary(bytes.NewReader(tstr))
-	//fmt.Println(err)
-	//spew.Dump(tran)
-	//return
-
 	c, err := rpc.NewClient(context.TODO(), defaultEndpoint, rpc.ClientOptions{})
 	if err != nil {
-		fmt.Println(err)
-		return
+		panic(err)
 	}
+
 	res, err := c.InvokeFunction(testscript, "confirmupload", []smartcontract.Parameter{
 		{smartcontract.StringType, "lul"},
 		{smartcontract.StringType, "file1"},
 		{smartcontract.IntegerType, 20},
 	})
 
-	//spew.Dump(res)
 	fmt.Printf("%+v %v\n", res.Result.Script, err)
 
-	script, err := hex.DecodeString(res.Result.Script)
+	script, _ := hex.DecodeString(res.Result.Script)
 	t := transaction.NewInvocationTX(script)
-
-	fmt.Println("asset", gasAssetID)
-	assetID, err := util.Uint256DecodeString(gasAssetID)
-	fmt.Println(assetID.String(), err)
-
-	//amount, err := util.Fixed8DecodeString(res.Result.GasConsumed)
-	amount, err := util.Fixed8DecodeString("0.0001")
-	fmt.Println(amount.String(), err)
-
+	assetID, _ := util.Uint256DecodeString(gasAssetID)
+	amount, _ := util.Fixed8DecodeString("0.0001")
 	addr, err := wif.PrivateKey.Address()
 	if err != nil {
-		fmt.Println(err)
-		return
+		panic(err)
 	}
 
 	b, err := getBalance(addr)
 	if err != nil {
-		fmt.Println(err)
-		return
+		panic(err)
 	}
 	inputs, spent := calculateInputs("", b, amount)
-	spew.Dump(inputs)
-	spew.Dump(spent)
 
 	t.Inputs = inputs
 
+	pubkey, _ := wif.PrivateKey.PublicKey()
+	fmt.Printf("pubkey: %x\n", pubkey)
+	scriptHash := "21" + hex.EncodeToString(pubkey) + "ac"
+	data, err := util.Uint160FromScript([]byte(scriptHash))
+	fmt.Println("first: %x %v", data, err)
+	t.Attributes = []*transaction.Attribute{{Data: data.Bytes(), Usage: transaction.Script}}
+
+	s, _ := hex.DecodeString(scriptHash)
+	data, err = util.Uint160FromScript(s)
+	fmt.Println("secon: %x %v", data, err)
+	t.Attributes = []*transaction.Attribute{{Data: data.Bytes(), Usage: transaction.Script}}
+
 	p, _ := wif.PrivateKey.Address()
-	//export const getScriptHashFromAddress = (address) => {
-	//	let hash = ab2hexstring(base58.decode(address))
-	//	return reverseHex(hash.substr(2, 40))
-	//  }
 	bs, _ := crypto.Base58Decode(p)
-	fmt.Println(len(bs))
-	l := 20
-	rev := make([]byte, l)
-	for i := 0; i < l; i++ {
-		rev[i] = bs[l-i]
-	}
+	fmt.Printf("%x\n", bs)
 	hash := hex.EncodeToString(bs[1:21])
 	a, err := util.Uint160DecodeString(hash)
 	if err != nil {
-		fmt.Println(err)
-		return
+		panic(err)
 	}
-
-	t.Attributes = []*transaction.Attribute{{Data: bs[1:21], Usage: transaction.Script}}
-
 	t.AddOutput(&transaction.Output{assetID, spent - amount, a})
-
-	t.Hash()
 
 	buf := &bytes.Buffer{}
 	err = t.EncodeBinary(buf)
 	if err != nil {
-		fmt.Println(err)
-		return
+		panic(err)
 	}
 
-	signature, err := wif.PrivateKey.Sign(buf.Bytes())
+	bb := buf.Bytes()
+	fmt.Printf("%x\n", bb[:len(bb)-1])
+	fmt.Printf("raw: %x\n", bb)
+
+	signature, err := wif.PrivateKey.Sign(bb[:len(bb)-1])
 	if err != nil {
-		fmt.Println(err)
-		return
+		panic(err)
 	}
+	fmt.Printf("sign: %x\n", signature)
 
 	invocS, _ := hex.DecodeString("40" + hex.EncodeToString(signature))
-	fmt.Printf("invoc: %x\n", invocS)
-
-	pubkey, _ := wif.PrivateKey.PublicKey()
-	fmt.Printf("pubkey: %x\n", pubkey)
-
-	verifS, _ := hex.DecodeString("21" + hex.EncodeToString(pubkey) + "ac")
-	//verifS, err := wif.PrivateKey.Signature()
-	//if err != nil {
-	//    fmt.Println(err)
-	//    return
-	//}
-	fmt.Printf("verif: %x\n", verifS)
-
+	verifS, _ := hex.DecodeString(scriptHash)
 	t.Scripts = []*transaction.Witness{{invocS, verifS}}
-
-	fmt.Println(t.Hash())
+	t.Hash()
 	spew.Dump(t)
 
 	buf = &bytes.Buffer{}
 	err = t.EncodeBinary(buf)
 	if err != nil {
-		fmt.Println(err)
-		return
+		panic(err)
 	}
 
 	rawTx := buf.Bytes()
 	resp, err := c.SendRawTransaction(hex.EncodeToString(rawTx))
 	fmt.Println(resp, err)
-
 }
 
 // UTXO represents unspent transaction output
