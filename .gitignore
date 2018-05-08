@@ -1,4 +1,4 @@
-testlib/neo-sc.avm
-testlib/neo-sc.dll
-bin/
-obj/
+contract/testlib/neo-sc.avm
+contract/testlib/neo-sc.dll
+contract/bin/
+contract/obj/
