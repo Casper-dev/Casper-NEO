@@ -24,7 +24,6 @@ const (
 	gasAssetID      = "602c79718b16e442de58778e148d0b1084e3b2dffd5de6b7b16cee7969282de7"
 	wifKey          = "KxDgvEKzgSBPPfuVfw67oPQBSjidEiqTHURKSDL1R7yGaGYAeYnr"
 	testscript      = "dc7e6a0e779a86f66f7f3b3088b1c76e285835cd"
-	defaultAddress  = "AK2nJJpJr6o664CWJKi1QRXjqeic2zRp8y"
 	defaultEndpoint = "http://127.0.0.1:10332"
 )
 
@@ -92,14 +91,14 @@ func main() {
 	t.AddOutput(&transaction.Output{assetID, spent - amount, a})
 
 	buf := &bytes.Buffer{}
-	err = t.EncodeBinary(buf)
+	err = t.EncodeHashableFields(buf)
 	if err != nil {
 		panic(err)
 	}
 
 	bb := buf.Bytes()
-	fmt.Printf("%x\n", bb[:len(bb)-1])
-	fmt.Printf("raw: %x\n", bb)
+	fmt.Printf("%x\n", bb)
+	return
 
 	signature, err := wif.PrivateKey.Sign(bb[:len(bb)-1])
 	if err != nil {

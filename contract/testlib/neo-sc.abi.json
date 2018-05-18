@@ -1,5 +1,5 @@
 {
-    "hash":"0xdc7e6a0e779a86f66f7f3b3088b1c76e285835cd",
+    "hash":"0x6b22acf2392f15758bdfe604454a6f294299c9d9",
     "entrypoint":"Main",
     "functions":
     [
@@ -64,6 +64,28 @@
         },
         {
             "name":"ConfirmUpdate",
+            "parameters":
+            [
+                {
+                    "name":"args",
+                    "type":"Array"
+                }
+            ],
+            "returntype":"Array"
+        },
+        {
+            "name":"GetFile",
+            "parameters":
+            [
+                {
+                    "name":"args",
+                    "type":"Array"
+                }
+            ],
+            "returntype":"Array"
+        },
+        {
+            "name":"GetFilesNumber",
             "parameters":
             [
                 {

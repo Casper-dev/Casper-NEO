@@ -47,16 +47,16 @@ public class CasperContract: SmartContract
     public const byte RoleBanned = 0x02;
 
     public const byte MaxFailedPings = 5;
-
     public const ulong bytesPerToken = 128;
 
-    // at nodeID + *Sx we store provider parameters
-    public const string sizeSx = ":size";
-
-    // at NodeS we store counter with #number of nodes + 1
-    // at NodeS + "i", i = 1.. we store node hashes
+    // at nodeS we store counter with #number of nodes + 1
+    // at nodeS + "i", i = 1.. we store node hashes
     public const string nodeS = "nodes";
-    public const string fileS = "files";
+
+    // at nodeF + "nodeID" we store list of file hashes
+    // for the specified node
+    public const string nodeF = "nodef:";
+    public const string fileS = "files:";
 
     // events
     public const string ConsensusResultEvent = "consensus";
@@ -67,22 +67,40 @@ public class CasperContract: SmartContract
         Runtime.Notify(op, args);
         if (op == "register")
             return RegisterProvider(args);
+        else if (op == "addtoken")
+            return new object[]{};
+        else if (op == "confirmdownload")
+            return new object[]{};
+        else if (op == "confirmupload")
+            return ConfirmUpload(args);
+        else if (op == "confirmupdate")
+            return ConfirmUpdate(args);
+        else if (op == "getfile")
+            return GetFile(args);
+        else if (op == "getfilesize")
+            return GetFileSize(args);
+        else if (op == "getfilesnumber")
+            return GetFilesNumber(args);
         else if (op == "getinfo")
             return GetNodeInfo(args);
         else if (op == "getpeers")
             return GetPeers(args);
         else if (op == "getpingtarget")
             return GetPingTarget(args);
-        else if (op == "getfilesize")
-            return GetFileSize(args);
-        else if (op == "setipport")
-            return UpdateIpPort(args);
-        else if (op == "confirmupload")
-            return ConfirmUpload(args);
-        else if (op == "confirmupdate")
-            return ConfirmUpdate(args);
         else if (op == "notifydelete")
             NotifyDelete(args);
+        else if (op == "notifyspacefreed")
+            return new object[]{};
+        else if (op == "notifyverificationtarget")
+            return new object[]{};
+        else if (op == "prepay")
+            return new object[]{};
+        else if (op == "sendpingresult")
+            return new object[]{};
+        else if (op == "updateipport")
+            return UpdateIpPort(args);
+        else if (op == "verifyreplication")
+            return new object[]{};
         else if (op == "debugprint")
             DebugPrintNodes();
         else if (op == "debugclear")
@@ -108,7 +126,6 @@ public class CasperContract: SmartContract
         if (node != null)
             Fatal("provider already registered");
 
-        //var node = (NodeHash: nodeID, Telegram: telegram, UDPIpPort: udpIpPort, IPPort: ipPort, Size: size);
         BigInteger count;
         var v = Storage.Get(Storage.CurrentContext, nodeS);
         count = (v == null) ? 1 : v.AsBigInteger();
@@ -181,6 +198,14 @@ public class CasperContract: SmartContract
             Fatal("insufficient space");
 
         n.free = n.free - size;
+
+        var fp = nodeF + nodeID;
+        var countRaw = Storage.Get(Storage.CurrentContext, fp);
+        BigInteger count = countRaw.AsBigInteger();
+        count = count + 1;
+        Storage.Put(Storage.CurrentContext, fp, count.AsByteArray());
+        Storage.Put(Storage.CurrentContext, fp + count, fileID);
+
         Storage.Put(Storage.CurrentContext, nodeID, NSerialize(n));
         Storage.Put(Storage.CurrentContext, fileS + fileID, size.AsByteArray());
 
@@ -212,6 +237,27 @@ public class CasperContract: SmartContract
         Storage.Put(Storage.CurrentContext, fileS + fileID, size.AsByteArray());
 
         return new object[]{n.free};
+    }
+
+    public static object[] GetFile(object[] args)
+    {
+        var nodeID = (string)args[0];
+        var num    = (long)  args[1];
+
+        var fp = nodeF + nodeID;
+        var hash = Storage.Get(Storage.CurrentContext, fp + num);
+        var sizeRaw = Storage.Get(Storage.CurrentContext, fileS + hash);
+        BigInteger size = sizeRaw.AsBigInteger();
+
+        return new object[]{hash, size};
+    }
+
+    public static object[] GetFilesNumber(object[] args)
+    {
+        var nodeID = (string)args[0];
+        var countRaw = Storage.Get(Storage.CurrentContext, nodeF + nodeID);
+        BigInteger count = countRaw.AsBigInteger();
+        return new object[]{count};
     }
 
     // TODO get random peers
