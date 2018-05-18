@@ -88,15 +88,15 @@ public class CasperContract: SmartContract
         else if (op == "getpingtarget")
             return GetPingTarget(args);
         else if (op == "notifydelete")
-            NotifyDelete(args);
+            return new object[]{};
         else if (op == "notifyspacefreed")
-            return new object[]{};
+            return NotifySpaceFreed(args);
         else if (op == "notifyverificationtarget")
-            return new object[]{};
+            return NotifyVerificationTarget(args);
         else if (op == "prepay")
             return new object[]{};
         else if (op == "sendpingresult")
-            return new object[]{};
+            return SendPingResult(args);
         else if (op == "updateipport")
             return UpdateIpPort(args);
         else if (op == "verifyreplication")
@@ -346,8 +346,7 @@ public class CasperContract: SmartContract
         return new object[]{size};
     }
 
-    // FIXME NotifySpaceFreed in solidity
-    public static void NotifyDelete(object[] args)
+    public static object[] NotifySpaceFreed(object[] args)
     {
         var nodeID      = (string)args[0];
         var fileID      = (string)args[1];
@@ -361,6 +360,8 @@ public class CasperContract: SmartContract
         // TODO take size from Storage by fileID?
         n.free = n.free + size;
         Storage.Put(Storage.CurrentContext, nodeID, NSerialize(n));
+
+        return new object[]{};
     }
 
     public static void NotifyVerificationTarget(object[] args)
