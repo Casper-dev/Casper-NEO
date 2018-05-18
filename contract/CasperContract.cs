@@ -364,11 +364,12 @@ public class CasperContract: SmartContract
         return new object[]{};
     }
 
-    public static void NotifyVerificationTarget(object[] args)
+    public static object[] NotifyVerificationTarget(object[] args)
     {
         var nodeID = (string)args[0];
         var fileID = (string)args[1];
         ThrowEvent(VerificationTargetEvent, nodeID, fileID);
+        return new object[]{};
     }
 
     public static object[] CheckVerification(object[] args)
