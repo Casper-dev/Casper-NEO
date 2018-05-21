@@ -1,5 +1,5 @@
 {
-    "hash":"0x6b22acf2392f15758bdfe604454a6f294299c9d9",
+    "hash":"0x2e4f12252428d6575d72805dcf266d3af8a8b8e9",
     "entrypoint":"Main",
     "functions":
     [
@@ -140,7 +140,7 @@
             "returntype":"Array"
         },
         {
-            "name":"NotifyDelete",
+            "name":"NotifySpaceFreed",
             "parameters":
             [
                 {
@@ -148,7 +148,7 @@
                     "type":"Array"
                 }
             ],
-            "returntype":"Void"
+            "returntype":"Array"
         },
         {
             "name":"NotifyVerificationTarget",
@@ -159,7 +159,7 @@
                     "type":"Array"
                 }
             ],
-            "returntype":"Void"
+            "returntype":"Array"
         },
         {
             "name":"CheckVerification",
