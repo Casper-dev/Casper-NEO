@@ -264,16 +264,17 @@ public class CasperContract: SmartContract
     public static object[] GetPeers(object[] args)
     {
         long size = (long)args[0];
+        long count = (long)args[1];
 
         // FIXME use empty slice instead of nil because of more nice output
         // in neo-python
         byte[] nil = new byte[0]{};
         object[] ips = new byte[4][]{nil, nil, nil, nil};
         byte[] v = Storage.Get(Storage.CurrentContext, nodeS);
-        BigInteger count = v.AsBigInteger();
+        BigInteger amount = v.AsBigInteger();
 
         int ind = 0;
-        for(long i = 1; i < count; i++)
+        for(long i = 1; i < amount; i++)
         {
             byte[] nodeID = Storage.Get(Storage.CurrentContext, nodeS + i);
             var node = Storage.Get(Storage.CurrentContext, nodeID);
@@ -282,7 +283,7 @@ public class CasperContract: SmartContract
             {
                 ips[ind] = nodeID;
                 ind = ind + 1;
-                if (ind == 3)
+                if (ind == count)
                     break;
             }
         }
