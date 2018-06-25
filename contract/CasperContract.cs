@@ -266,12 +266,23 @@ public class CasperContract: SmartContract
         long size = (long)args[0];
         long count = (long)args[1];
 
+        Header header = Blockchain.GetHeader(Blockchain.GetHeight());
+        BigInteger seed = header.ConsensusData;
+        if (args.Length > 2) {
+            seed = seed + (long)args[2];
+        }
+
         // FIXME use empty slice instead of nil because of more nice output
         // in neo-python
         byte[] nil = new byte[0]{};
         object[] ips = new byte[4][]{nil, nil, nil, nil};
         byte[] v = Storage.Get(Storage.CurrentContext, nodeS);
         BigInteger amount = v.AsBigInteger();
+
+        for(long i = 0; i < count; i++) {
+            long ind = (long)(seed % amount);
+            
+        }
 
         int ind = 0;
         for(long i = 1; i < amount; i++)
