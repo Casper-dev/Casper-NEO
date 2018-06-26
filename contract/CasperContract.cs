@@ -278,13 +278,8 @@ public class CasperContract: SmartContract
         object[] ips = new byte[4][]{nil, nil, nil, nil};
         byte[] v = Storage.Get(Storage.CurrentContext, nodeS);
         BigInteger amount = v.AsBigInteger();
-
-        for(long i = 0; i < count; i++) {
-            long ind = (long)(seed % amount);
-            
-        }
-
-        int ind = 0;
+        
+        long ind = 0;
         for(long i = 1; i < amount; i++)
         {
             byte[] nodeID = Storage.Get(Storage.CurrentContext, nodeS + i);
