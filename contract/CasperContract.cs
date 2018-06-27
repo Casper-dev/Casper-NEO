@@ -42,6 +42,33 @@ public class CasperContract: SmartContract
         return n;
     }
 
+    private struct File
+    {
+        public BigInteger size;
+        public byte[] node1, node2, node3, node4;
+    }
+
+    private static byte[] FSerialize(File f)
+    {
+        var a = new object[]{
+            f.size, f.node1, f.node2, f.node3, f.node4,
+        };
+        return a.Serialize();
+    }
+
+    private static File FDeserialize(byte[] b)
+    {
+        var a = (object[])b.Deserialize();
+        File f = new File();
+        f.size = (BigInteger)a[0];
+        f.node1 = (byte[])a[1];
+        f.node2 = (byte[])a[2];
+        f.node3 = (byte[])a[3];
+        f.node4 = (byte[])a[4];
+
+        return f;
+    }
+
     //enum Role : byte {Normal=1, Banned};
     public const byte RoleNormal = 0x01;
     public const byte RoleBanned = 0x02;
@@ -85,6 +112,8 @@ public class CasperContract: SmartContract
             return GetNodeInfo(args);
         else if (op == "getpeers")
             return GetPeers(args);
+        else if (op == "getstoringpeers")
+            return GetStoringPeers(args);
         else if (op == "getpingtarget")
             return GetPingTarget(args);
         else if (op == "notifydelete")
@@ -207,7 +236,25 @@ public class CasperContract: SmartContract
         Storage.Put(Storage.CurrentContext, fp + count, fileID);
 
         Storage.Put(Storage.CurrentContext, nodeID, NSerialize(n));
-        Storage.Put(Storage.CurrentContext, fileS + fileID, size.AsByteArray());
+
+        File file;
+        var fileRaw = Storage.Get(Storage.CurrentContext, fileS + fileID);
+        if (fileRaw == null)
+            file = new File();
+        else
+            file = FDeserialize(fileRaw);
+
+        byte[] id = (byte[])args[0];
+        if (file.node1 == null || file.node1.Length == 0)
+            file.node1 = id;
+        if (file.node2 == null || file.node2.Length == 0)
+            file.node2 = id;
+        if (file.node3 == null || file.node3.Length == 0)
+            file.node3 = id;
+        if (file.node4 == null || file.node4.Length == 0)
+            file.node4 = id;
+
+        Storage.Put(Storage.CurrentContext, fileS + fileID, FSerialize(file));
 
         return new object[]{n.free};
     }
@@ -224,17 +271,20 @@ public class CasperContract: SmartContract
 
         Node n = NDeserialize(node);
 
-        byte[] curVal = Storage.Get(Storage.CurrentContext, fileS + fileID);
-        if (curVal == null)
+        byte[] fileRaw = Storage.Get(Storage.CurrentContext, fileS + fileID);
+        if (fileRaw == null)
             Fatal("no file with such id");
 
-        BigInteger csize = curVal.AsBigInteger();
+        File file = FDeserialize(fileRaw);
+        BigInteger csize = file.size;
         if (n.free + csize < size)
             Fatal("insufficient space");
 
         n.free = n.free + csize - size;
         Storage.Put(Storage.CurrentContext, nodeID, NSerialize(n));
-        Storage.Put(Storage.CurrentContext, fileS + fileID, size.AsByteArray());
+
+        file.size = size;
+        Storage.Put(Storage.CurrentContext, fileS + fileID, FSerialize(file));
 
         return new object[]{n.free};
     }
@@ -246,10 +296,10 @@ public class CasperContract: SmartContract
 
         var fp = nodeF + nodeID;
         var hash = Storage.Get(Storage.CurrentContext, fp + num);
-        var sizeRaw = Storage.Get(Storage.CurrentContext, fileS + hash);
-        BigInteger size = sizeRaw.AsBigInteger();
+        var fileRaw = Storage.Get(Storage.CurrentContext, fileS + hash);
+        File file = FDeserialize(fileRaw);
 
-        return new object[]{hash, size};
+        return new object[]{hash, file.size};
     }
 
     public static object[] GetFilesNumber(object[] args)
@@ -278,7 +328,7 @@ public class CasperContract: SmartContract
         object[] ips = new byte[4][]{nil, nil, nil, nil};
         byte[] v = Storage.Get(Storage.CurrentContext, nodeS);
         BigInteger amount = v.AsBigInteger();
-        
+
         long ind = 0;
         for(long i = 1; i < amount; i++)
         {
@@ -294,6 +344,17 @@ public class CasperContract: SmartContract
             }
         }
         return ips;
+    }
+
+    public static object[] GetStoringPeers(object[] args)
+    {
+        var fileID = (string)args[0];
+        var fileRaw = Storage.Get(Storage.CurrentContext, fileS + fileID);
+        if (fileRaw == null)
+            return new object[]{"", "", "", ""};
+
+        File file = FDeserialize(fileRaw);
+        return new object[]{file.node1, file.node2, file.node3, file.node4};
     }
 
     public static object[] GetPingTarget(object[] args)
@@ -345,12 +406,12 @@ public class CasperContract: SmartContract
     public static object[] GetFileSize(object[] args)
     {
         var fileID = (string)args[0];
-        var val = Storage.Get(Storage.CurrentContext, fileS + fileID);
-        if (val == null)
+        var fileRaw = Storage.Get(Storage.CurrentContext, fileS + fileID);
+        if (fileRaw == null)
             Fatal("no file with such id");
 
-        BigInteger size = val.AsBigInteger();
-        return new object[]{size};
+        File file = FDeserialize(fileRaw);
+        return new object[]{file.size};
     }
 
     public static object[] NotifySpaceFreed(object[] args)
