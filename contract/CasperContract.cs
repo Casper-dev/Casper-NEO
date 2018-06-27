@@ -247,11 +247,11 @@ public class CasperContract: SmartContract
         byte[] id = (byte[])args[0];
         if (file.node1 == null || file.node1.Length == 0)
             file.node1 = id;
-        if (file.node2 == null || file.node2.Length == 0)
+        else if (file.node2 == null || file.node2.Length == 0)
             file.node2 = id;
-        if (file.node3 == null || file.node3.Length == 0)
+        else if (file.node3 == null || file.node3.Length == 0)
             file.node3 = id;
-        if (file.node4 == null || file.node4.Length == 0)
+        else if (file.node4 == null || file.node4.Length == 0)
             file.node4 = id;
 
         Storage.Put(Storage.CurrentContext, fileS + fileID, FSerialize(file));
