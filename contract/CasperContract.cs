@@ -13,14 +13,14 @@ public class CasperContract: SmartContract
     private struct Node
     {
         public BigInteger size, free, index, fping;
-        public byte[] ipPort, thrift, telegram, role, owner;
+        public byte[] apiAddr, rpcAddr, telegram, role, owner;
     }
 
     private static byte[] NSerialize(Node n)
     {
         var a = new object[]{
             n.size, n.free, n.index, n.fping,
-            n.ipPort, n.thrift, n.telegram, n.role, n.owner,
+            n.apiAddr, n.rpcAddr, n.telegram, n.role, n.owner,
         };
         return a.Serialize();
     }
@@ -29,15 +29,15 @@ public class CasperContract: SmartContract
     {
         var a = (object[])b.Deserialize();
         Node n = new Node();
-        n.size = (BigInteger)a[0];
-        n.free = (BigInteger)a[1];
-        n.index = (BigInteger)a[2];
-        n.fping = (BigInteger)a[3];
-        n.ipPort = (byte[])a[4];
-        n.thrift = (byte[])a[5];
+        n.size     = (BigInteger)a[0];
+        n.free     = (BigInteger)a[1];
+        n.index    = (BigInteger)a[2];
+        n.fping    = (BigInteger)a[3];
+        n.apiAddr  = (byte[])a[4];
+        n.rpcAddr  = (byte[])a[5];
         n.telegram = (byte[])a[6];
-        n.role = (byte[])a[7];
-        n.owner = (byte[])a[8];
+        n.role     = (byte[])a[7];
+        n.owner    = (byte[])a[8];
 
         return n;
     }
@@ -50,9 +50,7 @@ public class CasperContract: SmartContract
 
     private static byte[] FSerialize(File f)
     {
-        var a = new object[]{
-            f.size, f.node1, f.node2, f.node3, f.node4,
-        };
+        var a = new object[]{f.size, f.node1, f.node2, f.node3, f.node4};
         return a.Serialize();
     }
 
@@ -60,7 +58,7 @@ public class CasperContract: SmartContract
     {
         var a = (object[])b.Deserialize();
         File f = new File();
-        f.size = (BigInteger)a[0];
+        f.size  = (BigInteger)a[0];
         f.node1 = (byte[])a[1];
         f.node2 = (byte[])a[2];
         f.node3 = (byte[])a[3];
@@ -144,11 +142,11 @@ public class CasperContract: SmartContract
     {
         var nodeID      = (byte[])args[0];
         BigInteger size = (long)  args[1];
-        var ipPort      = (byte[])args[2];
-        var thrift      = (byte[])args[3];
+        var apiAddr     = (byte[])args[2];
+        var rpcAddr     = (byte[])args[3];
         var telegram    = (byte[])args[4];
         byte[] role     = new byte[]{RoleNormal};
-        Runtime.Notify("exec: registerprovider", nodeID, size, ipPort, thrift, role);
+        Runtime.Notify("exec: registerprovider", nodeID, size, apiAddr, rpcAddr, role);
 
         // TODO check balance
         var node = Storage.Get(Storage.CurrentContext, nodeID);
@@ -164,8 +162,8 @@ public class CasperContract: SmartContract
         Node n = new Node();
         n.size     = size;
         n.free     = size;
-        n.ipPort   = ipPort;
-        n.thrift   = thrift;
+        n.apiAddr  = apiAddr;
+        n.rpcAddr  = rpcAddr;
         n.telegram = telegram;
         n.role     = role;
         n.index    = count;
@@ -190,13 +188,13 @@ public class CasperContract: SmartContract
 
         Node n = NDeserialize(node);
 
-        return new object[]{n.size, n.free, n.ipPort, n.thrift, n.role[0]};
+        return new object[]{n.size, n.free, n.apiAddr, n.rpcAddr, n.role[0]};
     }
 
     public static object[] UpdateIpPort(object[] args)
     {
-        var nodeID = (byte[])args[0];
-        var ipPort = (byte[])args[1];
+        var nodeID  = (byte[])args[0];
+        var apiAddr = (byte[])args[1];
 
         var node = Storage.Get(Storage.CurrentContext, nodeID);
         if (node == null)
@@ -206,10 +204,10 @@ public class CasperContract: SmartContract
         if (!slicesEqual(n.owner, ExecutionEngine.CallingScriptHash))
             Fatal("wrong address");
 
-        n.ipPort = ipPort;
+        n.apiAddr = apiAddr;
         Storage.Put(Storage.CurrentContext, nodeID, NSerialize(n));
 
-        return new object[]{ipPort};
+        return new object[]{apiAddr};
     }
 
     public static object[] ConfirmUpload(object[] args)
@@ -313,7 +311,7 @@ public class CasperContract: SmartContract
     // TODO get random peers
     public static object[] GetPeers(object[] args)
     {
-        long size = (long)args[0];
+        long size  = (long)args[0];
         long count = (long)args[1];
 
         Header header = Blockchain.GetHeader(Blockchain.GetHeight());
@@ -366,7 +364,7 @@ public class CasperContract: SmartContract
         Header header = Blockchain.GetHeader(Blockchain.GetHeight());
         var rand1 = header.Hash.AsBigInteger();
         var rand2 = nonce.AsBigInteger();
-        var rand = rand1 + rand2;
+        var rand  = rand1 + rand2;
         BigInteger nodeNum = 1 + rand % (count-1);
 
         Runtime.Notify("random", rand, rand1, rand2, nodeNum);
@@ -388,6 +386,7 @@ public class CasperContract: SmartContract
         var node = Storage.Get(Storage.CurrentContext, nodeID);
         if (node == null)
             Fatal("absent value");
+
         Node n = NDeserialize(node);
         n.fping = n.fping + 1;
 
