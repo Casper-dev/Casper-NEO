@@ -13,6 +13,7 @@ public class CasperContract: SmartContract
     private struct Node
     {
         public BigInteger size, free, index, fping;
+        public uint lastFail;
         public byte[] apiAddr, rpcAddr, telegram, role, owner;
     }
 
@@ -20,6 +21,7 @@ public class CasperContract: SmartContract
     {
         var a = new object[]{
             n.size, n.free, n.index, n.fping,
+            n.lastFail,
             n.apiAddr, n.rpcAddr, n.telegram, n.role, n.owner,
         };
         return a.Serialize();
@@ -33,6 +35,7 @@ public class CasperContract: SmartContract
         n.free     = (BigInteger)a[1];
         n.index    = (BigInteger)a[2];
         n.fping    = (BigInteger)a[3];
+        n.lastFail = (uint)a[5];
         n.apiAddr  = (byte[])a[4];
         n.rpcAddr  = (byte[])a[5];
         n.telegram = (byte[])a[6];
@@ -71,6 +74,7 @@ public class CasperContract: SmartContract
     public const byte RoleNormal = 0x01;
     public const byte RoleBanned = 0x02;
 
+    public const uint PingSuspectInterval = 3600;
     public const byte MaxFailedPings = 5;
     public const ulong bytesPerToken = 128;
 
@@ -379,27 +383,34 @@ public class CasperContract: SmartContract
         var nodeID = (string)args[0];
         var alive  = (bool)  args[1];
 
-        if (alive)
-            return new object[]{false};
-
-        // 1. increase number of failed pings
         var node = Storage.Get(Storage.CurrentContext, nodeID);
         if (node == null)
             Fatal("absent value");
 
         Node n = NDeserialize(node);
-        n.fping = n.fping + 1;
-
-        // 2. ban node if failedPings > 5
-        // 3. return true if node is banned
-        if (n.fping > MaxFailedPings)
+        Header header = Blockchain.GetHeader(Blockchain.GetHeight());
+        if (alive)
         {
-            n.role = new byte[]{RoleBanned};
-            Storage.Put(Storage.CurrentContext, nodeID, NSerialize(n));
-            return new object[]{true};
+            if (header.Timestamp - n.lastFail < PingSuspectInterval)
+                n.fping = n.fping - 1;
+            else
+                n.fping = 0;
+        } else {
+            if (n.fping != 0 && header.Timestamp - n.lastFail < PingSuspectInterval)
+                n.fping = n.fping * 2;
+            else
+                n.fping = n.fping + 1;
+
+            n.lastFail = header.Timestamp;
         }
 
-        return new object[]{false};
+        if (n.fping > MaxFailedPings)
+            n.role = new byte[]{RoleBanned};
+
+        Storage.Put(Storage.CurrentContext, nodeID, NSerialize(n));
+
+        bool banned = n.fping > 5;
+        return new object[]{banned};
     }
 
     public static object[] GetFileSize(object[] args)
