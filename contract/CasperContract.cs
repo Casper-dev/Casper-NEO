@@ -14,7 +14,8 @@ public class CasperContract: SmartContract
     {
         public BigInteger size, free, index, fping;
         public uint lastFail;
-        public byte[] apiAddr, rpcAddr, telegram, role, owner;
+        public byte role;
+        public byte[] apiAddr, rpcAddr, telegram, owner;
     }
 
     private static byte[] NSerialize(Node n)
@@ -22,7 +23,8 @@ public class CasperContract: SmartContract
         var a = new object[]{
             n.size, n.free, n.index, n.fping,
             n.lastFail,
-            n.apiAddr, n.rpcAddr, n.telegram, n.role, n.owner,
+            n.role,
+            n.apiAddr, n.rpcAddr, n.telegram, n.owner,
         };
         return a.Serialize();
     }
@@ -36,10 +38,10 @@ public class CasperContract: SmartContract
         n.index    = (BigInteger)a[2];
         n.fping    = (BigInteger)a[3];
         n.lastFail = (uint)a[5];
+        n.role     = (byte)a[7];
         n.apiAddr  = (byte[])a[4];
         n.rpcAddr  = (byte[])a[5];
         n.telegram = (byte[])a[6];
-        n.role     = (byte[])a[7];
         n.owner    = (byte[])a[8];
 
         return n;
@@ -149,7 +151,7 @@ public class CasperContract: SmartContract
         var apiAddr     = (byte[])args[2];
         var rpcAddr     = (byte[])args[3];
         var telegram    = (byte[])args[4];
-        byte[] role     = new byte[]{RoleNormal};
+        byte role       = RoleNormal;
         Runtime.Notify("exec: registerprovider", nodeID, size, apiAddr, rpcAddr, role);
 
         // TODO check balance
@@ -192,7 +194,7 @@ public class CasperContract: SmartContract
 
         Node n = NDeserialize(node);
 
-        return new object[]{n.size, n.free, n.apiAddr, n.rpcAddr, n.role[0]};
+        return new object[]{n.size, n.free, n.apiAddr, n.rpcAddr, n.role};
     }
 
     public static object[] UpdateIpPort(object[] args)
@@ -405,7 +407,7 @@ public class CasperContract: SmartContract
         }
 
         if (n.fping > MaxFailedPings)
-            n.role = new byte[]{RoleBanned};
+            n.role = RoleBanned;
 
         Storage.Put(Storage.CurrentContext, nodeID, NSerialize(n));
 
